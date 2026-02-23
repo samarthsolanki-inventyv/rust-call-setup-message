@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rust Call Setup</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    input, button { padding: 8px; margin: 5px; }
+    #incoming { display: none; background: #eee; padding: 10px; }
+  </style>
+</head>
+<body>
+
+<h2>Rust Call Setup Demo</h2>
+
+<input id="myId" placeholder="Your ID">
+<button onclick="connect()">Connect</button>
+
+<hr>
+
+<input id="targetId" placeholder="Call user">
+<button onclick="startCall()">Start Call</button>
+
+<div id="incoming">
+  <p id="caller"></p>
+  <button onclick="accept()">Accept</button>
+  <button onclick="reject()">Reject</button>
+</div>
+
+<p id="status"></p>
+
+<script>
+let ws;
+let myId;
+let currentCaller;
+
+function connect() {
+  myId = document.getElementById("myId").value;
+  ws = new WebSocket(`ws://127.0.0.1:8080?userId=${myId}`);
+
+  ws.onopen = () => {
+    status("Connected as " + myId);
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+
+    switch(msg.type) {
+
+      case "call-start":
+        currentCaller = msg.from;
+        document.getElementById("caller").innerText =
+          "Incoming call from " + msg.from;
+        document.getElementById("incoming").style.display = "block";
+        break;
+
+      case "call-accept":
+        status("Call accepted by " + msg.from);
+        break;
+
+      case "call-reject":
+        status("Call rejected by " + msg.from);
+        break;
+    }
+  };
+}
+
+function startCall() {
+  const target = document.getElementById("targetId").value;
+
+  ws.send(JSON.stringify({
+    type: "call-start",
+    to: target
+  }));
+
+  status("Calling " + target + "...");
+}
+
+function accept() {
+  ws.send(JSON.stringify({
+    type: "call-accept",
+    to: currentCaller
+  }));
+
+  document.getElementById("incoming").style.display = "none";
+  status("Call accepted");
+}
+
+function reject() {
+  ws.send(JSON.stringify({
+    type: "call-reject",
+    to: currentCaller
+  }));
+
+  document.getElementById("incoming").style.display = "none";
+  status("Call rejected");
+}
+
+function status(text) {
+  document.getElementById("status").innerText = text;
+}
+</script>
+
+</body>
+</html>
